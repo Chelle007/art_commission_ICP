@@ -1,46 +1,61 @@
-import { Canister, update, query, Vec, Opt, Result, Record, Principal, text, nat64, blob, bool, StableBTreeMap } from 'azle';
+import { Canister, update, query, Vec, Opt, Ok, Result, Record, Variant, Principal, Err, text, nat64, blob, bool, StableBTreeMap } from 'azle';
 
 const Artist = Record({
-    id: Principal,
-    name: text,
+    artistID: Principal,
+    artistName: text,
     price: nat64,
     number_of_revision: nat64
 });
 type Artist = typeof Artist.tsType;
 
 const Customer = Record({
-    id: Principal,
-    name: text
+    customerID: Principal,
+    customerName: text
 });
 type Customer = typeof Customer.tsType;
 
+const Status = Variant({
+    Pending: text,
+    Accepted: text,
+    Rejected: text,
+    ArtworkSubmitted: text,
+    Approved: text,
+    Cancelled: text
+})
+type Status = typeof Status.tsType;
+
 const Transaction = Record({
-    id: Principal,
-    artist: Principal,
-    customer: Principal,
-    art: blob,
+    transactionID: Principal,
+    customerID: Principal,
+    artistID: Principal,
     price: nat64,
-    createdAt: nat64,
-    completed: bool,
-    canceled: bool
+    remaining_revision: nat64,
+    artURL: text,
+    status: Status
 });
 type Transaction = typeof Transaction.tsType;
+
+const Error = Variant({
+    NotFound: text,
+    InvalidPayload: text
+})
+type Error = typeof Error.tsType;
 
 let artists = StableBTreeMap<Principal, Artist>(0);
 let customers = StableBTreeMap<Principal, Customer>(1);
 let transactions = StableBTreeMap<Principal, Transaction>(2);
 
 export default Canister({
-    createArtist: update([text, nat64, nat64], Artist, (name, price, number_of_revision) => {
-        const id = generateId();
+    createArtist: update([text, nat64, nat64], Artist, (artistName, price, number_of_revision) => {
+        const artistID = generateId();
         const artist: Artist = {
-            id,
-            name,
+            artistID,
+            artistName,
             price,
             number_of_revision
         };
 
-        artists.insert(artist.id, artist);
+        artists.insert(artist.artistID, artist);
 
         return artist;
     }),
@@ -53,14 +68,14 @@ export default Canister({
         return artists.get(id);
     }),
 
-    createCustomer: update([text], Customer, (name) => {
-        const id = generateId();
+    createCustomer: update([text], Customer, (customerName) => {
+        const customerID = generateId();
         const customer: Customer = {
-            id,
-            name
+            customerID,
+            customerName
         };
 
-        customers.insert(customer.id, customer);
+        customers.insert(customer.customerID, customer);
 
         return customer;
     }),
@@ -73,49 +88,48 @@ export default Canister({
         return customers.get(id);
     }),
 
-    createTransaction: update([Principal], Transaction, (artist) => {
+    // FOR CLIENT
+    createCommission: update([Principal, Principal], Result(Transaction, Error), (artistID, customerID) => {
+        const artistOpt = artists.get(artistID);
+        if ("None" in artistOpt) {
+            return Err({ NotFound: `cannot create the transaction: artist=${artistID} not found` });
+        }
+        const artist = artistOpt.Some;
 
+        const customerOpt = customers.get(customerID);
+        if ("None" in customerOpt) {
+            return Err({ NotFound: `cannot create the transaction: customer=${customerID} not found` });
+        }
+
+        const transactionID = generateId();
+        const transaction: Transaction = {
+            transactionID,
+            customerID,
+            ...artist,
+            remaining_revision: artist.number_of_revision,
+            artURL: "",
+            status: { Pending: "Commission created" }
+        }
+
+        transactions.insert(transactionID, transaction);
+        return Ok(transaction);
     }),
 
+    approveArtwork:
+
+    requestRevision:
+
+    // FOR ARTIST
+    acceptCommission:
+
+    rejectCommission:
+
+    submitArtwork:
+
+    // FOR BOTH PARTIES
+    cancelCommission:
+
 })
-/*
-$query;
-export function getArtistDetails(): Result<Vec<Artist>, string> {
-    try {
-        return Result.Ok(artistList.values);
-    } catch (error: any) {
-        return Result.Err(`Error getting artist details: ${error}`);
-    }
-}
-
-//CUSTOMER
-
-export function commission(): {
-
-}
-
-export function accept(): {
-
-}
-
-export function reject(): {
-
-}
-
-export function customerCancel(): {
-
-}
-
-//ARTIST
-
-export function uploadImage(): {
-
-}
-
-export function artistCancel(): {
-
-}
-*/
 
 function generateId(): Principal {
     const randomBytes = new Array(29)
