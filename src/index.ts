@@ -1,5 +1,6 @@
 import { Canister, update, query, Vec, Opt, Ok, Result, Record, Variant, Principal, Err, text, bool, nat64, StableBTreeMap, int8 } from 'azle';
 
+// Define types for Artist, Customer, Status, Commission, and Error
 const Artist = Record({
     artistID: Principal,
     artistName: text,
@@ -42,6 +43,7 @@ const Error = Variant({
 })
 type Error = typeof Error.tsType;
 
+// Map to store artists, customers, and commissions
 let artists = StableBTreeMap<Principal, Artist>(0);
 let customers = StableBTreeMap<Principal, Customer>(1);
 let commissions = StableBTreeMap<Principal, Commission>(2);
@@ -98,6 +100,7 @@ export default Canister({
     }),
 
     // FOR CLIENT
+    // Method for client to set a new commission for specific artist
     createCommission: update([Principal, Principal], Result(Commission, Error), (artistID, customerID) => {
         const artistOpt = artists.get(artistID);
         if ("None" in artistOpt) {
@@ -131,6 +134,7 @@ export default Canister({
         return Ok(commission);
     }),
 
+    // Method for client to end the commission by approving the artwork
     approveCommission: update([Principal], Result(Commission, Error), (commissionID) => {
         const commissionOpt = commissions.get(commissionID);
         if ("None" in commissionOpt) {
@@ -148,6 +152,7 @@ export default Canister({
         return Ok(commission);
     }),
 
+    // Method for client to request revision
     requestRevision: update([Principal], Result(Commission, Error), (commissionID) => {
         const commissionOpt = commissions.get(commissionID);
         if ("None" in commissionOpt) {
@@ -171,6 +176,7 @@ export default Canister({
     }),
 
     // FOR ARTIST
+    // Method for artist to accept the commission
     acceptCommission: update([Principal], Result(Commission, Error), (commissionID) => {
         const commissionOpt = commissions.get(commissionID);
         if ("None" in commissionOpt) {
@@ -188,6 +194,7 @@ export default Canister({
         return Ok(commission);
     }),
 
+    // Method for artist to reject the commission
     rejectCommission: update([Principal], Result(Commission, Error), (commissionID) => {
         const commissionOpt = commissions.get(commissionID);
         if ("None" in commissionOpt) {
@@ -205,6 +212,7 @@ export default Canister({
         return Ok(commission);
     }),
 
+    // Method for artist to submit the artwork
     submitArtwork: update([Principal, text], Result(Commission, Error), (commissionID, artURL) => {
         const commissionOpt = commissions.get(commissionID);
         if ("None" in commissionOpt) {
@@ -224,6 +232,7 @@ export default Canister({
     }),
 
     // FOR BOTH PARTIES
+    // Method for both parties to cancel the commission
     cancelCommission: update([Principal], Result(Commission, Error), (commissionID) => {
         const commissionOpt = commissions.get(commissionID);
         if ("None" in commissionOpt) {
@@ -243,6 +252,7 @@ export default Canister({
 
 })
 
+// Method to randomly generate ID in Principal type
 function generateId(): Principal {
     const randomBytes = new Array(29)
         .fill(0)
@@ -251,6 +261,7 @@ function generateId(): Principal {
     return Principal.fromUint8Array(Uint8Array.from(randomBytes));
 }
 
+// Method to check commission's validity
 function checkCommissionValidity(status: Status, methodType: string): string {
     let commissionValidity = "valid";
     if (status.Cancelled) commissionValidity = "commission has been cancelled";
