@@ -38,8 +38,7 @@ type Commission = typeof Commission.tsType;
 const Error = Variant({
     NotFound: text,
     NoRemainingRevision: text,
-    InvalidTransaction: text,
-    InvalidPayload: text
+    InvalidTransaction: text
 })
 type Error = typeof Error.tsType;
 
